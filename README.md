@@ -32,7 +32,7 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Screenshots
 
-![alt text](image.png)
+![URL Shortener UI](./screenshots/image.png)
 
 ## Author
 
