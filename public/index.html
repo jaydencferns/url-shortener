@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>URL Shortener</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f7f9fc;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1, h2 {
+      color: #333;
+      margin-bottom: 1rem;
+    }
+
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #result {
+      margin-top: 1.5rem;
+      font-size: 1.1rem;
+      word-break: break-all;
+    }
+
+    .error {
+      color: red;
+    }
+
+    .success a {
+      color: #28a745;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    ul#urlList {
+      list-style-type: none;
+      padding-left: 0;
+      margin-top: 1rem;
+    }
+
+    ul#urlList li {
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+      background: #eef1f5;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+    }
+
+    ul#urlList a {
+      color: #007bff;
+      text-decoration: none;
+      margin-right: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔗 URL Shortener</h1>
+  <div class="container">
+    <input type="text" id="longUrl" placeholder="Paste your long URL here..." />
+    <button onclick="shortenUrl()">Shorten URL</button>
+    <div id="result"></div>
+
+    <h2>📄 Recent Shortened URLs</h2>
+    <button id="clearBtn" style="margin-bottom: 1rem; background:#dc3545;">Clear All</button>
+    <ul id="urlList"></ul>
+
+
+    
+  </div>
+
+  <script>
+    async function shortenUrl() {
+      const longUrl = document.getElementById('longUrl').value;
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = ''; // clear previous
+
+      if (!longUrl.trim()) {
+        resultDiv.innerHTML = '<span class="error">❌ Please enter a URL.</span>';
+        return;
+      }
+
+      try {
+        const res = await fetch('/shorten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ longUrl })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          resultDiv.innerHTML = `<div class="success">✅ Short URL: <a href="${data.shortUrl}" target="_blank">${data.shortUrl}</a></div>`;
+          fetchUrls(); // refresh the list
+        } else {
+          resultDiv.innerHTML = `<span class="error">❌ ${data.error || 'Something went wrong'}</span>`;
+        }
+      } catch (err) {
+        resultDiv.innerHTML = `<span class="error">❌ Server error. Try again later.</span>`;
+      }
+    }
+
+    async function fetchUrls() {
+      const list = document.getElementById('urlList');
+      list.innerHTML = '<li>Loading...</li>';
+
+      try {
+        const res = await fetch('/api/urls');
+        const urls = await res.json();
+
+        if (!Array.isArray(urls) || urls.length === 0) {
+          list.innerHTML = '<li>No URLs shortened yet.</li>';
+          return;
+        }
+
+        list.innerHTML = '';
+        urls.forEach(url => {
+          const li = document.createElement('li');
+          const link = `http://localhost:3000/${url.shortCode}`;
+          li.innerHTML = `<a href="${link}" target="_blank">${link}</a> → ${url.longUrl}`;
+          list.appendChild(li);
+        });
+      } catch (err) {
+        list.innerHTML = '<li>Error loading URLs.</li>';
+      }
+    }
+
+    document.getElementById('clearBtn').addEventListener('click', async () => {
+  if (!confirm('Are you sure you want to delete all shortened URLs?')) return;
+
+  try {
+    const res = await fetch('/api/urls', { method: 'DELETE' });
+    const data = await res.json();
+
+    if (res.ok) {
+      alert(data.message);
+      fetchUrls(); // Refresh the list, now empty
+      document.getElementById('result').innerHTML = '';
+    } else {
+      alert('Failed to clear URLs');
+    }
+  } catch {
+    alert('Server error while clearing URLs');
+  }
+});
+
+
+    fetchUrls(); // load on page load
+  </script>
+</body>
+</html>
